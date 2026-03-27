@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "askservicesbyme@gmail.com" ||
+         (exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidProfile(data) {
+      return hasRequiredFields(['full_name', 'email', 'role']) &&
+             data.full_name is string && data.full_name.size() > 0 && data.full_name.size() < 100 &&
+             data.email is string && data.role in ['user', 'admin'] &&
+             (!('uid' in data) || data.uid is string) &&
+             (!('is_admin' in data) || data.is_admin is bool) &&
+             (!('is_active' in data) || data.is_active is bool) &&
+             (!('total_merges' in data) || data.total_merges is int) &&
+             (!('created_at' in data) || data.created_at is string) &&
+             (!('last_merge_job_id' in data) || data.last_merge_job_id == null || data.last_merge_job_id is string);
+    }
+
+    function isValidMergeJob(data) {
+      return hasRequiredFields(['user_id', 'status', 'file_count', 'created_at']) &&
+             data.user_id is string && data.status in ['pending', 'processing', 'completed', 'failed'] &&
+             data.file_count is int && data.file_count >= 0 &&
+             (!('page_count' in data) || data.page_count is int) &&
+             (!('file_names' in data) || data.file_names is list) &&
+             (!('output_filename' in data) || data.output_filename is string) &&
+             (!('total_size_bytes' in data) || data.total_size_bytes is int) &&
+             (!('error_message' in data) || data.error_message is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Profiles
+    match /profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) && isValidProfile(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+
+    // Merge Jobs
+    match /merge_jobs/{jobId} {
+      allow read: if isAuthenticated() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid && isValidMergeJob(request.resource.data);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Uploaded Files
+    match /uploaded_files/{fileId} {
+      allow read: if isAuthenticated() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+      allow delete: if isAuthenticated() && (resource.data.user_id == request.auth.uid || isAdmin());
+    }
+
+    // System Settings
+    match /system_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Admin Logs
+    match /admin_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+    }
+  }
+}

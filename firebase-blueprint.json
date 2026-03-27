@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "profiles": {
+      "title": "User Profile",
+      "description": "Extended user information for registered accounts.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "full_name": { "type": "string", "description": "Display name of the user" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "User role" },
+        "is_admin": { "type": "boolean", "description": "Quick admin check flag" },
+        "avatar_url": { "type": "string", "format": "url", "description": "Profile picture URL" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Registration date" },
+        "last_login_at": { "type": "string", "format": "date-time", "description": "Last login timestamp" },
+        "last_merge_at": { "type": "string", "format": "date-time", "description": "Last merge operation timestamp" },
+        "last_merge_job_id": { "type": "string", "description": "ID of the most recent merge job" },
+        "is_active": { "type": "boolean", "description": "Account status" },
+        "total_merges": { "type": "integer", "description": "Lifetime merge count" }
+      },
+      "required": ["full_name", "email", "role", "created_at"]
+    },
+    "merge_jobs": {
+      "title": "Merge Job",
+      "description": "Record of a PDF merge operation.",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string", "description": "ID of the user who performed the merge" },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"], "description": "Job status" },
+        "file_count": { "type": "integer", "description": "Number of PDFs merged" },
+        "file_names": { "type": "array", "items": { "type": "string" }, "description": "Names of files merged" },
+        "page_count": { "type": "integer", "description": "Total pages in output" },
+        "output_filename": { "type": "string", "description": "Name of the resulting file" },
+        "total_size_bytes": { "type": "integer", "description": "Total size of merged file" },
+        "error_message": { "type": "string", "description": "Error details if job failed" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Job creation time" }
+      },
+      "required": ["user_id", "status", "file_count", "created_at"]
+    },
+    "system_settings": {
+      "title": "System Settings",
+      "description": "Global platform configuration.",
+      "type": "object",
+      "properties": {
+        "max_file_size_mb": { "type": "integer", "description": "Maximum allowed file size in MB" },
+        "max_files_per_merge": { "type": "integer", "description": "Maximum number of files per merge operation" },
+        "allow_anonymous_merges": { "type": "boolean", "description": "Whether unauthenticated users can merge files" },
+        "max_total_merges_per_user": { "type": "integer", "description": "Limit on merges per user account" },
+        "maintenance_mode": { "type": "boolean", "description": "Whether the platform is in maintenance mode" },
+        "updated_at": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["max_file_size_mb", "max_files_per_merge"]
+    },
+    "admin_logs": {
+      "title": "Admin Log",
+      "description": "Audit log for administrative actions.",
+      "type": "object",
+      "properties": {
+        "admin_id": { "type": "string", "description": "ID of the admin who performed the action" },
+        "action": { "type": "string", "description": "Description of the action performed" },
+        "target_id": { "type": "string", "description": "ID of the target user or resource" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Action timestamp" }
+      },
+      "required": ["admin_id", "action", "timestamp"]
+    },
+    "uploaded_files": {
+      "title": "Uploaded File",
+      "description": "Metadata for an individual uploaded PDF file.",
+      "type": "object",
+      "properties": {
+        "job_id": { "type": "string", "description": "Associated merge job ID" },
+        "user_id": { "type": "string", "description": "Owning user ID" },
+        "original_name": { "type": "string", "description": "Original filename" },
+        "file_size": { "type": "integer", "description": "Size in bytes" },
+        "page_count": { "type": "integer", "description": "Number of pages" },
+        "storage_path": { "type": "string", "description": "Firebase Storage path" },
+        "uploaded_at": { "type": "string", "format": "date-time", "description": "Upload timestamp" }
+      },
+      "required": ["job_id", "user_id", "original_name", "file_size", "storage_path", "uploaded_at"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "profiles",
+      "description": "User profile documents"
+    },
+    "/merge_jobs/{jobId}": {
+      "schema": "merge_jobs",
+      "description": "Merge job records"
+    },
+    "/uploaded_files/{fileId}": {
+      "schema": "uploaded_files",
+      "description": "Uploaded file metadata"
+    },
+    "/system_settings/{settingId}": {
+      "schema": "system_settings",
+      "description": "Global platform configuration"
+    },
+    "/admin_logs/{logId}": {
+      "schema": "admin_logs",
+      "description": "Administrative audit logs"
+    }
+  }
+}
